@@ -73,3 +73,13 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user} >> {self.bio}"
+
+
+class Post(BaseModel):
+    slug = models.SlugField(primary_key=True, max_length=100, )
+    title = models.CharField(max_length=100, unique=True, )
+    content = models.CharField(max_length=1000, )
+    author = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, )
+
+    def __str__(self):
+        return self.slug
