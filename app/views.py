@@ -1,4 +1,4 @@
-
+from django.urls import reverse
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework.response import Response
@@ -6,10 +6,12 @@ from rest_framework.views import APIView
 from rest_framework import serializers
 from django.core.validators import MinLengthValidator
 from django.core.cache import cache
+
+from .pagination import LimitOffsetPagination, get_paginated_response_context, get_paginated_response
 from .validators import number_validator, special_char_validator, letter_validator
-from .models import BaseUser, Profile
-from .services import register
-from .selectors import get_profile
+from .models import BaseUser, Profile, Post
+from .services import register, create_post
+from .selectors import get_profile, post_list
 from .mixinapi import ApiAuthMixin
 
 
@@ -95,3 +97,72 @@ class ProfileApi(ApiAuthMixin, APIView):
     def get(self, request):
         query = get_profile(user=request.user)
         return Response(self.OutPutSerializer(query, context={"request": request}).data)
+
+
+class PostApi(ApiAuthMixin, APIView):
+    class Pagination(LimitOffsetPagination):
+        default_limit = 10
+
+    class FilterSerializer(serializers.Serializer):
+        title = serializers.CharField(required=False, max_length=100)
+        search = serializers.CharField(required=False, max_length=100)
+        created_at__range = serializers.CharField(required=False, max_length=100)
+        author__in = serializers.CharField(required=False, max_length=100)
+        slug = serializers.CharField(required=False, max_length=100)
+        content = serializers.CharField(required=False, max_length=1000)
+
+    class InputSerializer(serializers.Serializer):
+        content = serializers.CharField(max_length=1000)
+        title = serializers.CharField(max_length=100)
+
+    class OutPutSerializer(serializers.ModelSerializer):
+        author = serializers.SerializerMethodField("get_author")
+        url = serializers.SerializerMethodField("get_url")
+
+        class Meta:
+            model = Post
+            fields = ("url", "title", "author")
+
+        def get_author(self, post):
+            return post.author.email
+
+        def get_url(self, post):
+            request = self.context.get("request")
+            path = reverse("api:blog:post_detail", args=(post.slug,))
+            return request.build_absolute_uri(path)
+
+    def post(self, request):
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            query = create_post(
+                user=request.user,
+                content=serializer.validated_data.get("content"),
+                title=serializer.validated_data.get("title"),
+            )
+        except Exception as ex:
+            return Response(
+                {"detail": "Database Error - " + str(ex)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(self.OutPutSerializer(query, context={"request": request}).data)
+
+    def get(self, request):
+        filters_serializer = self.FilterSerializer(data=request.query_params)
+        filters_serializer.is_valid(raise_exception=True)
+
+        try:
+            query = post_list(filters=filters_serializer.validated_data, user=request.user)
+        except Exception as ex:
+            return Response(
+                {"detail": "Filter Error - " + str(ex)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return get_paginated_response_context(
+            pagination_class=self.Pagination,
+            serializer_class=self.OutPutSerializer,
+            queryset=query,
+            request=request,
+            view=self,
+        )

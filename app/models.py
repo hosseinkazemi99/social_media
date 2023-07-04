@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import BaseUserManager as BUM
 from django.contrib.auth.models import AbstractBaseUser
-
+from django.core.exceptions import ValidationError
 
 # Overwrite Django models --------------------------------
 class BaseModel(models.Model):
@@ -83,3 +83,19 @@ class Post(BaseModel):
 
     def __str__(self):
         return self.slug
+
+
+
+class Subscription(models.Model):
+    subscriber = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name="subs")
+    target     = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name="targets")
+
+    class Meta:
+        unique_together = ('subscriber', 'target')
+
+    def clean(self):
+        if self.subscriber == self.target:
+            raise ValidationError({"subscriber": ("subscriber cannot be equal to target")})
+
+    def __str__(self):
+        return f"{self.subscriber.email}- {self.target.email}"
