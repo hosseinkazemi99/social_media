@@ -30,3 +30,4 @@ def post_list(*, filters=None, user: BaseUser, self_include: bool = True) -> Que
         return PostFilter(filters, qs).qs
     return Post.objects.none()
 
+

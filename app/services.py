@@ -23,7 +23,6 @@ def register(*, bio: str | None, email: str, password: str) -> BaseUser:
     return user
 
 
-
 def count_follower(*, user: BaseUser) -> int:
     return Subscription.objects.filter(target=user).count()
 
@@ -31,16 +30,19 @@ def count_follower(*, user: BaseUser) -> int:
 def count_following(*, user: BaseUser) -> int:
     return Subscription.objects.filter(subscriber=user).count()
 
+
 def count_posts(*, user: BaseUser) -> int:
     return Post.objects.filter(author=user).count()
 
+
 def cache_profile(*, user: BaseUser) -> None:
     profile = {
-            "posts_count": count_posts(user=user),
-            "subscribers_count": count_follower(user=user),
-            "subscriptions_count": count_following(user=user),
-            }
+        "posts_count": count_posts(user=user),
+        "subscribers_count": count_follower(user=user),
+        "subscriptions_count": count_following(user=user),
+    }
     cache.set(f"profile_{user}", profile, timeout=None)
+
 
 @transaction.atomic
 def create_post(*, user: BaseUser, title: str, content: str) -> QuerySet[Post]:
@@ -51,6 +53,7 @@ def create_post(*, user: BaseUser, title: str, content: str) -> QuerySet[Post]:
     cache_profile(user=user)
     return post
 
+
 def subscribe(*, user: BaseUser, email: str) -> QuerySet[Subscription]:
     target = BaseUser.objects.get(email=email)
     sub = Subscription(subscriber=user, target=target)
@@ -58,3 +61,9 @@ def subscribe(*, user: BaseUser, email: str) -> QuerySet[Subscription]:
     sub.save()
     cache_profile(user=user)
     return sub
+
+
+def unsubscribe(*, user: BaseUser, email: str) -> dict:
+    target = BaseUser.objects.get(email=email)
+    Subscription.objects.get(subscriber=user, target=target).delete()
+    cache_profile(user=user)
