@@ -197,7 +197,7 @@ class PostDetailApi(ApiAuthMixin, APIView):
 
         return Response(serializer.data)
 
-    # Subscribe API
+# Subscribe API ----------------
 
 
 class SubscribeDetailApi(ApiAuthMixin, APIView):
