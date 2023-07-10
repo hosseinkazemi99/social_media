@@ -1,5 +1,3 @@
-from django.db import transaction
-from django.core.cache import cache
 from .models import BaseUser, Profile, Post, Subscription
 from django.db import transaction
 from django.db.models import QuerySet
@@ -67,3 +65,21 @@ def unsubscribe(*, user: BaseUser, email: str) -> dict:
     target = BaseUser.objects.get(email=email)
     Subscription.objects.get(subscriber=user, target=target).delete()
     cache_profile(user=user)
+
+
+def profile_count_update():
+    profiles = cache.keys("profile_*")
+
+    for profile_key in profiles: 
+        email = profile_key.replace("profile_", "")
+        data = cache.get(profile_key)
+
+        try:
+            profile = Profile.objects.get(user__email=email)
+            profile.posts_count = data.get("posts_count")
+            profile.subscribers_count = data.get("subscribers_count")
+            profile.subscriptions_count = data.get("subscriptions_count")
+            profile.save()
+
+        except Exception as ex:
+            print(ex)

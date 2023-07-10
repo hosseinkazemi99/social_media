@@ -39,6 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # External Package
     'rest_framework',
+    'django_celery_beat',
+    'django_celery_results',
+    'django_filters',
+    'corsheaders',
+
     # Internal Apps
     'app',
 ]
@@ -140,3 +145,13 @@ CACHES = {
 }
 # Cache time to live is 15 minutes.
 CACHE_TTL = 60 * 15
+
+# celery
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', default='amqp://guest:guest@localhost//')
+CELERY_RESULT_BACKEND = 'django-db'
+
+CELERY_TIMEZONE = 'UTC'
+
+CELERY_TASK_SOFT_TIME_LIMIT = 20  # seconds
+CELERT_TASK_TIME_LIMIT = 30  # seconds
+CELERY_TASK_MAX_RETRIES = 3
