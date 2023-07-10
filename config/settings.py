@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'django_filters',
     'corsheaders',
+    'drf_yasg',
 
     # Internal Apps
     'app',
